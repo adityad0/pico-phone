@@ -6,3 +6,4 @@ Components used:
 2. SSD1306 128x64 OLED Display
 3. 4X4 Matrix Keypad
 4. GSM Module (Here: SIM800L)
+5. RGB Led (Common Cathode)
