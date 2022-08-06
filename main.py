@@ -71,7 +71,7 @@ qr = QRCode()
 #         oled.pixel(x, y, value)                  # black is `True` in the matrix.
 # oled.show()
 
-upi_pa = "9538271867@apl"
+upi_pa = "adityadesaig@apl"
 upi_pn = "Aditya Desai"
 upi_cu = "INR"
 upi_url = f"upi://pay?pa={upi_pa}&pn={upi_pn}&cu=INR&am="
