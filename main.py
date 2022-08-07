@@ -79,9 +79,6 @@ upi_amt = ""
 
 command = ""
 
-gsm_signal_strength = []
-gsm_operator = []
-
 def sendCMD_waitResp(cmd, uart = uart1, timeout = 2000):
     uart.write(cmd)
     resp = waitResp(uart, timeout)
@@ -112,14 +109,24 @@ def get_keypress():
 
 def get_gsm_operator():
     opr = sendCMD_waitResp("AT+COPS?\r\n", uart1)
-    opr = gsm_operator[1]
-    # print("Operator: " + opr)
-    return opr
+    try:
+        opr = opr[1]
+        opr = opr[12:-1]
+        return opr
+    except Exception:
+        return "Unknown"
 
 def get_gsm_netStrength():
     ntsr = sendCMD_waitResp("AT+CSQ\r\n", uart1)
-    # print(ntsr)
-    return ntsr
+    try:
+        ntsr = ntsr[1]
+        ntsr = ntsr[6:]
+        return ntsr
+    except Exception:
+        return "0"
+
+gsm_operator = get_gsm_operator()
+gsm_signal_strength = get_gsm_netStrength()
 
 def draw_qr(qr_data):
     qr.clear()
@@ -299,11 +306,6 @@ def incoming_call():
                 oled.text("Call answer error", 0, 0)
                 oled.show()
                 return "call_answer_error"
-        if uart1.any():
-            resp = uart1.read().decode().strip()
-            print(resp)
-            if resp == "RING":
-                print('Incoming call..')
 
 def main_menu():
     global gsm_signal_strength, gsm_operator
@@ -316,6 +318,12 @@ def main_menu():
     oled.show()
     while True:
         key = str(get_keypress())
+        # Check for incoming calls
+        if uart1.any():
+            resp = uart1.read().decode().strip()
+            print(resp)
+            if resp == "RING":
+                print('Incoming call..')
         if key != None:
             if key == "1":
                 print("Option: Make call.")
@@ -342,9 +350,10 @@ def main_menu():
 if __name__ == "__main__":
     while True:
         try:
-            # gsm_operator = get_gsm_operator()
-            # gsm_signal_strength = get_gsm_netStrength()
+            print("GSM operator:", gsm_operator)
+            print("GSM signal strength:", gsm_signal_strength)
             main_menu()
         except OSError:
             print("OS Error!")
-            sleep(2)
+            blink_rgb_led('R', 2, 0.5)
+            blink_rgb_led('B', 2, 0.5)
