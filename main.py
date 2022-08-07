@@ -113,12 +113,12 @@ def get_keypress():
 def get_gsm_operator():
     opr = sendCMD_waitResp("AT+COPS?\r\n", uart1)
     opr = gsm_operator[1]
-    print("Operator: " + opr)
+    # print("Operator: " + opr)
     return opr
 
 def get_gsm_netStrength():
     ntsr = sendCMD_waitResp("AT+CSQ\r\n", uart1)
-    print(ntsr)
+    # print(ntsr)
     return ntsr
 
 def draw_qr(qr_data):
@@ -342,8 +342,8 @@ def main_menu():
 if __name__ == "__main__":
     while True:
         try:
-            gsm_operator = get_gsm_operator()
-            gsm_signal_strength = get_gsm_netStrength()
+            # gsm_operator = get_gsm_operator()
+            # gsm_signal_strength = get_gsm_netStrength()
             main_menu()
         except OSError:
             print("OS Error!")
