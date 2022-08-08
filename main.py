@@ -17,8 +17,6 @@ LED_RGB_R = Pin(22, Pin.OUT)
 LED_RGB_G = Pin(21, Pin.OUT)
 LED_RGB_B = Pin(20, Pin.OUT)
 
-command = ""
-
 i2c0 = I2C(0, sda = Pin(0), scl = Pin(1), freq = 40000)
 def get_i2c_devices(i2c0 = i2c0):
     print(i2c0)
@@ -53,7 +51,7 @@ for x in range(0, 4):
 oled.text("Initialized!", 0, 0)
 oled.show()
 
-sleep(1)
+# sleep(1)
 qr = QRCode()
 
 # qr.add_data("uQR example")
@@ -106,29 +104,48 @@ def get_keypress():
 
 def get_gsm_operator():
     resp = sendCMD_waitResp("AT+CSPN?\r\n", uart1)
-    sleep(2)
+    sleep(4)
     if uart1.any():
         resp = [resp, uart1.read()]
-    opr = resp[1].decode().replace('\r', '').split('\n')
-    opr = opr[1].split('"')
-    opr = opr[1]
-    print(opr)
-    if opr != "ERROR" or "":
-        return opr
-    else:
-        return "Unknown"
+    try:
+        opr = resp[1].decode().replace('\r', '').split('\n')
+        opr = opr[1].split('"')
+        opr = opr[1]
+        if opr != "ERROR" or "":
+            return opr
+        else:
+            return "Unknown"
+    except IndexError:
+        blink_rgb_led('R', 1, 0.2)
+        blink_rgb_led('B', 1, 0.2)
+        blink_rgb_led('R', 1, 0.2)
+        blink_rgb_led('B', 1, 0.2)
+        print("Get operator index error.")
+        return get_gsm_operator()
 
 def get_gsm_netStrength():
     ntsr = sendCMD_waitResp("AT+CSQ\r\n", uart1)
     try:
         ntsr = ntsr[1]
         ntsr = ntsr[6:]
-        return ntsr
+        ntsr = ntsr.split(",")
+        ntsr = ntsr[0]
+        if int(ntsr) > 0 and int(ntsr) < 10:
+            net_condition = "Marginal"
+        elif int(ntsr) >= 10 and int(ntsr) < 15:
+            net_condition = "OK"
+        elif int(ntsr) >= 15 and int(ntsr) < 20:
+            net_condition = "Good"
+        elif int(ntsr) >= 20 and int(ntsr) < 30:
+            net_condition = "Excellent"
+        else:
+            net_condition = "Unknown"
+        s_percentage = (int(ntsr)/30) * 100
+        s_data = [str(ntsr), str(net_condition), str(s_percentage)]
+        return s_data
     except Exception:
-        return "0"
-
-gsm_operator = get_gsm_operator()
-gsm_signal_strength = get_gsm_netStrength()
+        s_data = [0, 0, 0]
+        return s_data
 
 def draw_qr(qr_data):
     qr.clear()
@@ -137,7 +154,6 @@ def draw_qr(qr_data):
     print("QR version:", qr.version)
     print("Matrix length", len(matrix))
 
-    oled.fill(0)
     scale = 1
 
     offset_x = 45
@@ -193,6 +209,14 @@ def blink_rgb_led(color, times, delay):
             LED_RGB_B.high()
             sleep(delay)
             LED_RGB_B.low()
+            sleep(delay)
+    elif color == 'Y':
+        for i in range(0, times):
+            LED_RGB_G.high()
+            LED_RGB_B.high()
+            sleep(delay)
+            LED_RGB_B.low()
+            LED_RGB_G.low()
             sleep(delay)
     LED_RGB_R.low()
     LED_RGB_G.low()
@@ -268,19 +292,31 @@ def make_call():
 def upi_payment():
     upi_amt = ""
     oled.fill(0)
-    oled.text("Amt:", 0, 0)
-    oled.show()
-    qr.add_data(upi_url)
-    matrix = qr.get_matrix()
-    print("version:", qr.version)
-    print("len of matrix", len(matrix))
-
-    oled.fill(1)
-    for y in range(len(matrix)*2):                   # Scaling the bitmap by 2
-        for x in range(len(matrix[0])*2):            # because my screen is tiny.
-            value = not matrix[int(y/2)][int(x/2)]   # Inverting the values because
-            oled.pixel(x, y, value)                  # black is `True` in the matrix.
-    oled.show()
+    oled.text(f"Amt: {upi_amt}", 0, 0)
+    draw_qr(upi_url + upi_amt)
+    while True:
+        key = get_keypress()
+        if key == '*':
+            oled.fill(0)
+            oled.text("Cancelled", 0, 0)
+            oled.show()
+            sleep(2)
+            oled.fill(0)
+            oled.show()
+            main_menu()
+        elif key == '#':
+            oled.fill(0)
+            draw_qr(upi_url + upi_amt)
+            oled.text(f"Amt: {upi_amt}", 0, 0)
+            oled.show()
+        elif key != None:
+            if len(upi_amt) >= 8:
+                upi_amt = upi_amt
+            else:
+                upi_amt = upi_amt + str(key)
+            oled.fill(0)
+            oled.text(f"Amt: {upi_amt}", 0, 0)
+            oled.show()
 
 def incoming_call():
     oled.text("Incoming call..", 0, 0)
@@ -318,6 +354,7 @@ def incoming_call():
         elif key == "#":
             print("Answering call..")
             resp = sendCMD_waitResp("ATA\r\n")
+            sleep(2)
             print(resp)
             try:
                 if resp[1] == "OK":
@@ -353,48 +390,50 @@ def incoming_call():
                 return "index-error"
 
 def main_menu():
-    gsm_operator = get_gsm_operator()
     oled.fill(0)
-    oled.text(gsm_operator, 0, 0)
-    oled.text("1. Call out", 2, 16)
-    oled.text("2. Call in", 2, 26)
-    oled.text("3. UPI Payment", 2, 36)
+    oled.text("Getting opr..", 0, 0)
+    oled.show()
+    gsm_operator = get_gsm_operator()
+    print(f"Operator: {str(gsm_operator)}")
+    gsm_netStrength = get_gsm_netStrength()
+    print(f"Network Strength: {str(gsm_netStrength[0])} {str(gsm_netStrength[1])} {str(gsm_netStrength[2])}%")
+    oled.fill(0)
+    gsm_net_strength_display = str(round(float(gsm_netStrength[2]), 0))
+    title_str = f"{str(gsm_operator)} {gsm_net_strength_display}%"
+    oled.text(title_str, 0, 0)
+    oled.text("1. Make Call", 2, 16)
+    oled.text("2. UPI Payment", 2, 26)
+    oled.text("3. Option 3", 2, 36)
     oled.text("4. Option 4", 2, 46)
     oled.show()
     while True:
-        # gsm_operator = get_gsm_operator()
         key = str(get_keypress())
-        # Check for incoming calls
         if uart1.any():
             resp = uart1.read().decode().strip()
             print(resp)
             if resp == "RING":
                 oled.fill(0)
-                incoming_call()
+                print(incoming_call())
         if key != None:
             if key == "1":
                 print("Option: Make call.")
                 call_ret = make_call()
-                if call_ret != "":
-                    sleep(2)
-                    oled.fill(0)
-                    main_menu()
-                else:
-                    sleep(2)
-                    oled.fill(0)
-                    main_menu()
+                sleep(2)
+                oled.fill(0)
+                main_menu()
             elif key == "2":
-                print("2")
+                upi_payment()
             elif key == "3":
                 print("3")
             elif key == "4":
                 print("4")
 
 if __name__ == "__main__":
+    blink_rgb_led('R', 1, 0.1)
+    blink_rgb_led('G', 1, 0.1)
+    blink_rgb_led('B', 1, 0.1)
     while True:
         try:
-            print("GSM operator:", gsm_operator)
-            print("GSM signal strength:", gsm_signal_strength)
             main_menu()
         except OSError:
             print("OS Error!")
