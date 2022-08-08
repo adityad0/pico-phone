@@ -18,7 +18,9 @@ https://github.com/JASchilz/uQR
 SSD1306 Library:
 https://github.com/micropython/micropython/blob/master/drivers/display/ssd1306.py
 
+New features added:
+ 1. Incoming call answer and decline capabilities.
+
 Features to be added:
-1. Answer and decline incoming calls.
-2. Enabling multi-core functionality on the Pi Pico to recognize incoming calls.
-3. Wifi & Bluetooth connectivity to verify UPI payments is real time.
+1. Enabling multi-core functionality on the Pi Pico to recognize incoming calls.
+2. Wifi & Bluetooth connectivity to verify UPI payments is real time.
