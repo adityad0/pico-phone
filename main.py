@@ -9,11 +9,8 @@ from time import sleep
 from ssd1306 import SSD1306_I2C
 from uQR import QRCode
 import utime
-import _thread
 
 uart1 = UART(1, 9600)
-
-sLock = _thread.allocate_lock()
 
 LED_INBUILT = Pin(25, Pin.OUT)
 LED_RGB_R = Pin(22, Pin.OUT)
@@ -84,7 +81,7 @@ def sendCMD_waitResp(cmd, uart = uart1, timeout = 2000):
     resp = waitResp(uart, timeout)
     resp = resp[-1].decode().replace('\r', '').split('\n')
     return resp
-    
+
 def waitResp(uart = uart1, timeout = 2000):
     prvMills = utime.ticks_ms()
     resp = b""
@@ -108,12 +105,16 @@ def get_keypress():
         row_pins[row].low()
 
 def get_gsm_operator():
-    opr = sendCMD_waitResp("AT+COPS?\r\n", uart1)
-    try:
-        opr = opr[1]
-        opr = opr[12:-1]
+    resp = sendCMD_waitResp("AT+CSPN?\r\n", uart1)
+    sleep(2)
+    if uart1.any():
+        resp = [resp, uart1.read()]
+    opr = resp[1].decode().replace('\r', '').split('\n')
+    opr = opr[1].split('"')
+    opr = opr[1]
+    if opr != "ERROR" or "":
         return opr
-    except Exception:
+    else:
         return "Unknown"
 
 def get_gsm_netStrength():
@@ -281,71 +282,106 @@ def upi_payment():
     oled.show()
 
 def incoming_call():
-    oled.text("Incoming call", 0, 0)
-    oled.text("No call in..", 0, 16)
-    oled.text("* for menu", 0, 26)
+    oled.text("Incoming call..", 0, 0)
+    oled.text("UNKNOWN", 0, 16)
+    oled.text("* to decline", 0, 26)
     oled.text("# to answer", 0, 36)
     oled.show()
     while True:
         key = get_keypress()
         if key == "*":
-            main_menu()
+            print("Call declined..")
+            resp = sendCMD_waitResp("ATH;\r\n")
+            print(resp)
+            try:
+                if resp[1] == "OK":
+                    print("Call declined..")
+                    oled.fill(0)
+                    oled.text("Call declined", 0, 0)
+                    oled.show()
+                    sleep(2)
+                    return "pre-ans-decline"
+                else:
+                    print("Call decline error")
+                    oled.fill(0)
+                    oled.text("Call decline error", 0, 0)
+                    oled.show()
+                    return "ans-err"
+            except IndexError:
+                print("Index Error")
+                oled.fill(0)
+                oled.text("Index error", 0, 0)
+                oled.show()
+                sleep(2)
+                return "index-error"
         elif key == "#":
             print("Answering call..")
-            resp = sendCMD_waitResp("ATA;\r\n")
+            resp = sendCMD_waitResp("ATA\r\n")
+            sleep(2)
             print(resp)
-            if resp[1] == "OK":
-                print("Call answered")
+            try:
+                if resp[1] == "OK":
+                    print("Call answered")
+                    oled.fill(0)
+                    oled.text("Ongoing call..", 0, 0)
+                    oled.text("* to end", 0, 26)
+                    oled.show()
+                    call_time = 0
+                    while True:
+                        key = get_keypress()
+                        if key == "*":
+                            return "call-ended"
+                        else:
+                            call_time = call_time + 1
+                            oled.fill(0)
+                            oled.text("Ongoing call..", 0, 0)
+                            oled.text("Time: " + str(call_time), 0, 16)
+                            oled.text("* to end", 0, 26)
+                            oled.show()
+                else:
+                    print("Call answer error")
+                    oled.fill(0)
+                    oled.text("Call answer error", 0, 0)
+                    oled.show()
+                    return "call-ans-err"
+            except IndexError:
+                print("Index Error")
                 oled.fill(0)
-                oled.text("Call answered", 0, 0)
+                oled.text("Index error", 0, 0)
                 oled.show()
-                return "call_answered"
-            else:
-                print("Call answer error")
-                oled.fill(0)
-                oled.text("Call answer error", 0, 0)
-                oled.show()
-                return "call_answer_error"
+                sleep(2)
+                return "index-error"
 
 def main_menu():
-    global gsm_signal_strength, gsm_operator
+    gsm_operator = get_gsm_operator()
     oled.fill(0)
-    oled.text("Main Menu", 25, 0)
+    oled.text(gsm_operator, 0, 0)
     oled.text("1. Call out", 2, 16)
-    oled.text("2. Call in", 2, 26)
-    oled.text("3. UPI Payment", 2, 36)
+    oled.text("2. UPI Payment", 2, 26)
+    oled.text("3. Option 3", 2, 36)
     oled.text("4. Option 4", 2, 46)
     oled.show()
     while True:
         key = str(get_keypress())
-        # Check for incoming calls
         if uart1.any():
             resp = uart1.read().decode().strip()
             print(resp)
             if resp == "RING":
-                print('Incoming call..')
+                oled.fill(0)
+                print(incoming_call())
         if key != None:
             if key == "1":
                 print("Option: Make call.")
                 call_ret = make_call()
-                if call_ret != "":
-                    sleep(2)
-                    oled.fill(0)
-                    main_menu()
-                else:
-                    sleep(2)
-                    oled.fill(0)
-                    main_menu()
+                sleep(2)
+                oled.fill(0)
+                main_menu()
             elif key == "2":
                 print("2")
             elif key == "3":
                 print("3")
             elif key == "4":
                 print("4")
-
-# blink_rgb_led('R', 2, 0.2)
-# blink_rgb_led('G', 2, 0.2)
-# blink_rgb_led('B', 2, 0.2)
 
 if __name__ == "__main__":
     while True:
