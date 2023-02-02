@@ -1,6 +1,8 @@
 # pico-phone
 A simple mobile phone built with the Raspberry Pi Pico.
 
+**This project has been discontinued and will be continued as ESP-PHONE**
+
 Features:
 1. Incoming and Outgoing calls
 2. Accept UPI payments directly to your bank account by generating a QR code of your UPI ID.
