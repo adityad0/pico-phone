@@ -1,7 +1,7 @@
 # pico-phone
 A simple mobile phone built with the Raspberry Pi Pico.
 
-**This project has been discontinued and will be continued as ESP-PHONE**
+**This project has been discontinued and will be continued as PAY-PHONE**
 
 Features:
 1. Incoming and Outgoing calls
@@ -15,10 +15,9 @@ Components used:
 5. RGB Led (Common Cathode)
 
 Credits:
-uQR Library:
-https://github.com/JASchilz/uQR
-SSD1306 Library:
-https://github.com/micropython/micropython/blob/master/drivers/display/ssd1306.py
+uQR Library: https://github.com/JASchilz/uQR
+
+SSD1306 Library: https://github.com/micropython/micropython-lib/tree/master/micropython/drivers/display/ssd1306
 
 New features added:
  1. Incoming call answer and decline capabilities.
