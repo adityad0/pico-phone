@@ -1,7 +1,7 @@
 # pico-phone
 A simple mobile phone built with the Raspberry Pi Pico.
 
-**This project has been discontinued and will be continued as PAY-PHONE**
+**This project has been discontinued.**
 
 Features:
 1. Incoming and Outgoing calls
